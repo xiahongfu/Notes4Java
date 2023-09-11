@@ -71,14 +71,29 @@ appendonly yes
 Redis7.0之后AOF文件分为基本文件（base file）和增量文件（incremental file）。基本文件（最多一个）存放AOF重写时原本的文件，增量文件（可能有多个）记录重写期间新增的操作。
 
 ### 重写(rewriting)
-
+#### 为什么需要重写
 AOF文件可能会记录无用的命令，比如将一个计数器自增100次，前99次对于数据恢复是无用的。当AOF文件越来越大时会发生重写，将log文件进行压缩。
-重写时完全安全的，当Redis对旧的file重写时，会创建一个新的file，这个file中会用最少的操作重建当前数据集（合并操作，去除无用操作等），当新的file完成后会用新的file替换旧的file。
+重写是完全安全的，当Redis对旧的file重写时，会创建一个新的file，这个file中会用最少的操作重建当前数据集（合并操作，去除无用操作等），当新的file完成后会用新的file替换旧的file。
 > The rewrite is completely safe. While Redis continues appending to the old file, a completely new one is produced with the minimal set of operations needed to create the current data set, and once this second file is ready Redis switches the two and starts appending to the new one.
 在重写期间不会阻塞redis服务。
 在Redis7.0之前，重写期间的新增操作存放在内存缓冲区中。在Redis7.0之后重写期间的新增操作存放在新的增量文件中，同时用一个临时的清单文件跟踪新生成的基本文件和增量文件。
 
+#### 重写的过程
+**Redis执行AOF重写的过程不是通过分析旧的AOF文件实现的。而是通过直接获取键对应的值**。Linux上用fork()创建了子进程之后，子进程和父进程共享内存空间。只有当父/子进程发生内存写入的时候才会复制这一部分的内存空间给子进程。这就是写时复制。写时复制是为了防止创建子进程的时候复制大量内存空间，而这些被复制的内存空间很可能在子进程的整个生命周期内都不被修改。
+
+Redis < 7.0
+* 主进程执行fork创建子进程
+* 子进程开始写新的AOF文件
+* 父进程将新增的命令写入内存缓冲区中（同时还要写入旧的AOF文件中，这样即使重写失败也能保证数据安全）
+* 重写完成后，将内存缓冲区中的命令写入新的AOF文件中
+* 将旧的删掉，将新的rename成旧的，这一步操作是原子的。
+
+Redis >= 7.0 的时候，在重写期间不是将增量的命令写入内存缓冲区，而是写入一个新的增量AOF文件中（不需要写入旧的AOF文件了）。如果重写失败，那么旧的AOF文件会加上新的AOF文件。
+
+
+
 ### 数据刷新策略
+在写日志的时候，实际上是将数据写入到操作系统内核的page cache中，如果此时操作系统崩溃，那么存储在page cache中的数据就会丢失。Linux 操作系统提供了一个fsync()方法来将page cache中的数据同步到磁盘中。下面的三个策略就是控制fsync()命令的执行时机。
 
 * appendfsync always: 所有的写操作立即fsync。很慢很安全。
 * appendfsync everysec: 每秒钟fsync一次。足够快（2.4之后和snapshotting一样快）。遇到崩溃的情况最多丢失一秒的数据。

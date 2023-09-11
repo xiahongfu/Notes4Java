@@ -3,7 +3,7 @@
 ### List
 ##### 类图
 ![List_classDiagram](imgs/List_classDiagram.png)
-##### ArrayList和LinkList
+##### ArrayList和LinkedList
 - ArrayList底层用数组实现，因此具有数组的一系列特征，增删效率低，根据下标查找元素效率高。数组默认的初始长度为10，扩容算法大致如下：newLength = oldLength + Math.max(oldLength>>1, growLength)。
 - LinkedList底层用双向链表实现，因此具有链表的一些特征，增删效率高，根据下标查找元素的效率低。数组默认初始长度为10。当查找第i个元素时，首先判断i在哪一边，然后选择从左边还是右边进行遍历。这样最多只需要遍历一半的节点。
 - ArrayList和LinkedList都可以存储null，元素可重复，元素保持插入时的顺序
@@ -97,7 +97,7 @@ class Student implements Comparable {
 ③每个叶节点（NIL节点、空节点）是黑色的
 ④每个红色节点的两个子节点都是黑色的（从每个叶子到根的所有路径上不能有两个连续的红色节点）
 ⑤从任一节点到其每个叶子的所有路径都包含相同数目的黑色节点（因为红黑树是从2-3-4树发展而来）
-**红黑树的特点**：①树高最大为$2log_2(n+1)$；②时间复杂度为$log_2(n+1)$；③相对于AVL树，牺牲了一定的平衡性比降低了树旋转频率，AVL树的平衡性要求过高，很容易发生不平衡。
+**红黑树的特点**：①树高最大为$2log_2(n+1)$；②时间复杂度为$log_2n$；③相对于AVL树，牺牲了一定的平衡性降低了树旋转频率，AVL树的平衡性要求过高，很容易发生不平衡。
 
 ### HashMap、Hashtable、LinkedHashMap、TreeMap
 **HashMap：**
@@ -149,6 +149,13 @@ WeakHashMap对象通过弱引用来引用key。当除了自身有对key的引用
 ##### ConcurrentHashMap
 一种线程安全的HashMap。基于数组+链表/红黑树实现。
 扩容：扩容时锁住链表/红黑树的头结点。对于某一个链表迁移完成之后，使用一个标志节点放在原来的位置，代表迁移完成。
+
+get：不需要加锁
+1. 先通过传入的key计算哈希值。
+2. 定位桶下标
+3. 判断头结点是否为要查找的key，如果是则直接返回
+4. 判断该桶是否正在扩容或者是否是树，如果是，则调用node的find(key)方法获取结果。
+5. 否则通过链表方法获取锁
 
 ##### IdentityHashMap
 和HashMap最大的区别就是IdentityHashMap使用==来区分key，当key1 != key2时，认为是两个不同的key。而HashMap用equal()方法区分key。

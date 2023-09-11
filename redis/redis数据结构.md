@@ -213,7 +213,7 @@ Redis的Set结构与Java中的HashSet类型，可以看成一个value为null的H
 * OBJ_ENCODING_INTSET：当所有数据都是整数时，且元素数量不超过`set-max-intset-entries`时，采用intset编码以节省内存。
 
 ### OBJ_ZSET
-Redis的Sort额的Set是一个可排序的set集合，SortedSet中的每个元素都带有一个score属性，可以基于score属性对元素排序。
+Redis的SortedSet是一个可排序的set集合，SortedSet中的每个元素都带有一个score属性，可以基于score属性对元素排序。
 
 ------
 
